@@ -1,3 +1,5 @@
+import { format } from "prettier";
+
 const isString = (value: unknown) => typeof value === "string";
 
 const isNumber = (value: unknown) => typeof value === "number";

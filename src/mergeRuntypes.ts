@@ -1,49 +1,37 @@
 import * as R from "runtypes";
 
 const mergeFields = (
-  fieldsA: Record<string, any>,
-  fieldsB: Record<string, any>
+  left: Record<string, any>,
+  right: Record<string, any>
 ): {} => {
-  return Object.keys(fieldsA).reduce((acc, key) => {
-    const valueA = fieldsA[key];
-    const valueB = fieldsB[key];
+  return Object.keys(left).reduce((acc, key) => {
+    const rightValue = left[key];
+    const leftValue = right[key];
 
-    if (valueB === undefined) {
-      return {
-        ...acc,
-        [key]: R.Union(valueA, R.Undefined),
-      };
+    if (leftValue === undefined) {
+      return { ...acc, [key]: R.Union(rightValue, R.Undefined) };
     }
 
-    if (valueA.tag === "record" && valueB.tag === "record") {
-      return {
-        ...acc,
-        [key]: mergeRuntypes(valueA, valueB),
-      };
+    if (rightValue.tag === "record" && leftValue.tag === "record") {
+      return { ...acc, [key]: mergeRuntypes(rightValue, leftValue) };
     }
 
     // TODO: Handle unknowns by leaving them alone until we determine the type
 
-    if (valueA.tag === valueB.tag) {
-      return {
-        ...acc,
-        [key]: valueA,
-      };
+    if (rightValue.tag === leftValue.tag) {
+      return { ...acc, [key]: rightValue };
     }
 
-    return {
-      ...acc,
-      [key]: R.Union(valueA, valueB),
-    };
+    return { ...acc, [key]: R.Union(rightValue, leftValue) };
   }, {});
 };
 
 export const mergeRuntypes = (
-  recordA: R.Record<Record<string, any>, false>,
-  recordB: R.Record<Record<string, any>, false>
+  left: R.Record<Record<string, any>, false>,
+  right: R.Record<Record<string, any>, false>
 ) => {
-  const mergedA = mergeFields(recordA.fields, recordB.fields);
-  const mergedB = mergeFields(recordB.fields, recordA.fields);
-
-  return R.Record({ ...mergedA, ...mergedB });
+  return R.Record({
+    ...mergeFields(left.fields, right.fields),
+    ...mergeFields(right.fields, left.fields),
+  });
 };
