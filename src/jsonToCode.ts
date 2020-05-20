@@ -1,5 +1,3 @@
-import { format } from "prettier";
-
 const isString = (value: unknown) => typeof value === "string";
 
 const isNumber = (value: unknown) => typeof value === "number";
@@ -63,13 +61,9 @@ export const jsonToCode = (value: any): string => {
     return `R.Array(${jsonToCode(value[0])})`;
   }
 
-  return (
-    "R.Record({" +
-    Object.entries(value)
-      .map(([key, value]) => {
-        return `${key}: ${jsonToCode(value)}`;
-      })
-      .join(",") +
-    "})"
-  );
+  return `R.Record({ ${Object.entries(value)
+    .map(([key, value]) => {
+      return `${key}: ${jsonToCode(value)}`;
+    })
+    .join(", ")} })`;
 };

@@ -50,9 +50,9 @@ export const runtypeToCode = (value: Node): string => {
     }, "");
   }
 
-  return `R.Record({${Object.entries(value.fields)
+  return `R.Record({ ${Object.entries(value.fields)
     .map(([key, value]) => {
       return `${key}: ${runtypeToCode(value)}`;
     })
-    .join(",")}})`;
+    .join(", ")} })`;
 };

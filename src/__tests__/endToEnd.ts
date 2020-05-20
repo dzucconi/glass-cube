@@ -28,7 +28,7 @@ describe("end to end", () => {
     const ExampleC = mergeRuntypes(ExampleA, ExampleB);
 
     expect(runtypeToCode(ExampleC)).toEqual(
-      "R.Record({foo: R.String,bar: R.Null.Or(R.Number),baz: R.Boolean.Or(R.Undefined),qux: R.String.Or(R.Null),quux: R.Record({quuz: R.Number}).Or(R.Undefined)})"
+      "R.Record({ foo: R.String, bar: R.Null.Or(R.Number), baz: R.Boolean.Or(R.Undefined), qux: R.String.Or(R.Null), quux: R.Record({ quuz: R.Number }).Or(R.Undefined) })"
     );
 
     expect(ExampleC.validate(INPUT_A).success).toBe(true);
