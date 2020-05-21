@@ -8,11 +8,13 @@ export const HEADER = `import * as R from "runtypes";`;
 export const writeRuntype = ({
   object,
   name,
+  path = "./__generated__",
 }: {
   object: any;
   name: string;
+  path: string;
 }) => {
-  const filePath = `./__generated__/${name}.ts`;
+  const filePath = `${path}/${name}.ts`;
   const fileSource = format(
     [
       HEADER,
