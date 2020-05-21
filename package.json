@@ -15,21 +15,16 @@
     "watch": "tsc -w -p ."
   },
   "devDependencies": {
-    "@artsy/auto-config": "^1.0.2",
-    "@types/axios": "^0.14.0",
     "@types/jest": "^25.2.1",
-    "@types/lodash.get": "^4.4.6",
     "@types/node": "^13.13.2",
-    "auto": "^9.31.1",
-    "axios": "^0.19.2",
-    "chalk": "^4.0.0",
     "jest": "^25.4.0",
-    "lodash.get": "^4.4.2",
     "ts-jest": "^25.4.0",
     "ts-node": "^8.9.0",
     "typescript": "^3.8.3"
   },
   "dependencies": {
+    "@types/lodash": "^4.14.152",
+    "lodash": "^4.17.15",
     "prettier": "^2.0.5",
     "runtypes": "^4.2.0"
   },

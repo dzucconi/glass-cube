@@ -5,7 +5,13 @@ import { runtypeToCode } from "./runtypeToCode";
 
 export const HEADER = `import * as R from "runtypes";`;
 
-export const write = ({ object, name }: { object: any; name: string }) => {
+export const writeRuntype = ({
+  object,
+  name,
+}: {
+  object: any;
+  name: string;
+}) => {
   const filePath = `./__generated__/${name}.ts`;
   const fileSource = format(
     [

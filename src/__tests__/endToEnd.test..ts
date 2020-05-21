@@ -1,6 +1,7 @@
 import { jsonToCode } from "../jsonToCode";
 import { runtypeToCode } from "../runtypeToCode";
 import { mergeRuntypes } from "../mergeRuntypes";
+import { codeToRuntype } from "../codeToRuntype";
 
 describe("end to end", () => {
   const INPUT_A = { foo: "bar", bar: 1, baz: false, qux: null };
@@ -9,8 +10,8 @@ describe("end to end", () => {
   const CODE_A = jsonToCode(INPUT_A);
   const CODE_B = jsonToCode(INPUT_B);
 
-  const ExampleA = eval(['const R = require("runtypes");', CODE_A].join("\n"));
-  const ExampleB = eval(['const R = require("runtypes");', CODE_B].join("\n"));
+  const ExampleA = codeToRuntype(CODE_A);
+  const ExampleB = codeToRuntype(CODE_B);
 
   it("validates", () => {
     expect(ExampleA.validate(INPUT_A).success).toBe(true);
