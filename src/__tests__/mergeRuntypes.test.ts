@@ -83,6 +83,8 @@ describe("mergeRuntypes", () => {
     ).toEqual("R.Record({ foo: R.Null.Or(R.Array(R.String)) })");
   });
 
+  test.todo("handles arrays of records");
+
   describe("reduceRuntypes", () => {
     it("it merges real world runtypes", () => {
       const runtypes = FEATURES.map(jsonToRuntype);
