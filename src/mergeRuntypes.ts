@@ -1,23 +1,25 @@
 import * as R from "runtypes";
 import { uniqBy, flattenDeep } from "lodash";
+import { Element } from "./runtypeToCode";
 
-export const flattenUnions = (alternatives: any) => {
+export const flattenUnions = (alternatives: Element[]): Element[] => {
   return flattenDeep(
-    alternatives.map((element: any) => {
+    alternatives.map((element) => {
       if (element.tag === "union") {
         return flattenUnions(element.alternatives);
       }
+
       return element;
     })
   );
 };
 
-export const pluckTag = (element: any) =>
+export const pluckTag = (element: Element) =>
   element.tag === "literal" ? `${element.tag}:${element.value}` : element.tag;
 
-export const flatten = (...elements: any) => {
+export const flatten = (...elements: Element[]) => {
   const flattened = flattenDeep(
-    elements.map((element: any) =>
+    elements.map((element) =>
       element.tag === "union" ? flattenUnions(element.alternatives) : [element]
     )
   );
@@ -39,7 +41,7 @@ export const mergeFields = (
       rightValue === undefined &&
       leftValue.tag === "union" &&
       leftValue.alternatives.some(
-        (element: any) =>
+        (element: Element) =>
           element.tag === "literal" && element.value === undefined
       )
     ) {
@@ -62,9 +64,7 @@ export const mergeFields = (
         ...leftValue.alternatives,
         ...rightValue.alternatives,
       ]);
-
-      const union = uniqBy(alternatives, (element: any) => element.tag);
-
+      const union = uniqBy(alternatives, (element: Element) => element.tag);
       return { ...acc, [key]: flatten(...union) };
     }
 
@@ -76,17 +76,19 @@ export const mergeFields = (
       return { ...acc, [key]: flatten(leftValue, rightValue) };
     }
 
+    // Both are arrays but elements of array are still unknown, then just continue and return one of them
+    if (
+      leftValue.tag === "array" &&
+      rightValue.tag === "array" &&
+      [leftValue.element, rightValue.element].every(
+        (element) => element.tag === "unknown"
+      )
+    ) {
+      return { ...acc, [key]: leftValue };
+    }
+
     // Both are arrays, merge, but omit any unknowns (unless it's still unknown)
     if (leftValue.tag === "array" && rightValue.tag === "array") {
-      // If the elements of the array are still unknown then just continue and return one of them
-      if (
-        [leftValue.element, rightValue.element].every(
-          (element) => element.tag === "unknown"
-        )
-      ) {
-        return { ...acc, [key]: leftValue };
-      }
-
       // If one of them is unknown then omit it ...
       const elements = [leftValue.element, rightValue.element].filter(
         (element) => element.tag !== "unknown"

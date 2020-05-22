@@ -1,11 +1,11 @@
 import * as R from "runtypes";
 
-export type Node =
+export type Element =
   | R.String
   | R.Number
   | R.Boolean
   | R.Literal<null | undefined>
-  | R.Array<Node, false>
+  | R.Array<Element, false>
   | R.Union1<any>
   | R.Union2<any, any>
   | R.Union3<any, any, any>
@@ -13,9 +13,9 @@ export type Node =
   | R.Union5<any, any, any, any, any>
   | R.Union6<any, any, any, any, any, any>
   | R.Unknown
-  | R.Record<Record<string, Node>, false>;
+  | R.Record<Record<string, Element>, false>;
 
-export const runtypeToCode = (value: Node): string => {
+export const runtypeToCode = (value: Element): string => {
   if (value.tag === "string") {
     return "R.String";
   }
