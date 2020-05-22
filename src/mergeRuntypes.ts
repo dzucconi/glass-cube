@@ -1,5 +1,5 @@
 import * as R from "runtypes";
-import { uniqBy, flattenDeep } from "lodash";
+import { uniqBy, flattenDeep, uniq } from "lodash";
 import { Element } from "./runtypeToCode";
 
 export const flattenUnions = (alternatives: Element[]): Element[] => {
@@ -28,7 +28,7 @@ export const flatten = (...elements: Element[]) => {
   return R.Union(...uniqBy(flattened, pluckTag));
 };
 
-export const mergeFields = (
+export const mergeElements = (
   left: Record<string, any>,
   right: Record<string, any>
 ): {} => {
@@ -101,7 +101,7 @@ export const mergeFields = (
       // If both elements are records, merge them, otherwise merge the fields
       const fn = elements.every((element) => element.tag === "record")
         ? mergeRuntypes
-        : mergeFields;
+        : mergeElements;
 
       return {
         ...acc,
@@ -124,7 +124,7 @@ export const mergeRuntypes = (
   right: R.Record<Record<string, any>, false>
 ) => {
   return R.Record({
-    ...mergeFields(left.fields, right.fields),
-    ...mergeFields(right.fields, left.fields),
+    ...mergeElements(left.fields, right.fields),
+    ...mergeElements(right.fields, left.fields),
   });
 };
