@@ -83,7 +83,17 @@ describe("mergeRuntypes", () => {
     ).toEqual("R.Record({ foo: R.Null.Or(R.Array(R.String)) })");
   });
 
-  test.todo("handles arrays of records");
+  it("handles arrays of records", () => {
+    const Example = reduceRuntypes([
+      jsonToRuntype({ foo: [] }),
+      jsonToRuntype({ foo: [{ bar: "baz", baz: true }] }),
+      jsonToRuntype({ foo: [{ baz: "true" }] }),
+    ])!;
+
+    expect(runtypeToCode(Example)).toEqual(
+      "R.Record({ foo: R.Array(R.Record({ baz: R.Boolean.Or(R.String), bar: R.String.Or(R.Undefined) })) })"
+    );
+  });
 
   describe("reduceRuntypes", () => {
     it("it merges real world runtypes", () => {
