@@ -1,7 +1,7 @@
 import * as R from "runtypes";
 import { uniqBy, flattenDeep } from "lodash";
 
-const flattenUnions = (alternatives: any) => {
+export const flattenUnions = (alternatives: any) => {
   return flattenDeep(
     alternatives.map((element: any) => {
       if (element.tag === "union") {
@@ -12,13 +12,21 @@ const flattenUnions = (alternatives: any) => {
   );
 };
 
-const mergeWithUnion = (union: R.Union2<any, any>, element: any) => {
-  const alternatives = flattenUnions([...union.alternatives, element]);
+export const pluckTag = (element: any) =>
+  element.tag === "literal" ? `${element.tag}:${element.value}` : element.tag;
+
+export const flatten = (...elements: any) => {
+  const flattened = flattenDeep(
+    elements.map((element: any) =>
+      element.tag === "union" ? flattenUnions(element.alternatives) : [element]
+    )
+  );
+
   // @ts-ignore
-  return R.Union(...uniqBy(alternatives, (element) => element.tag));
+  return R.Union(...uniqBy(flattened, pluckTag));
 };
 
-const mergeFields = (
+export const mergeFields = (
   left: Record<string, any>,
   right: Record<string, any>
 ): {} => {
@@ -40,17 +48,12 @@ const mergeFields = (
 
     // If the key is completely missing, union with undefined
     if (rightValue === undefined) {
-      return { ...acc, [key]: R.Union(leftValue, R.Undefined) };
+      return { ...acc, [key]: flatten(leftValue, R.Undefined) };
     }
 
     // Both records, then recursively merge
     if (rightValue.tag === "record" && leftValue.tag === "record") {
       return { ...acc, [key]: mergeRuntypes(rightValue, leftValue) };
-    }
-
-    // TODO: Handle unknowns by leaving them alone until we determine the type
-    if (rightValue.tag === "unknown") {
-      console.log("unknown!");
     }
 
     // Both unions, then flatten them out and unique the values into a new union
@@ -62,16 +65,47 @@ const mergeFields = (
 
       const union = uniqBy(alternatives, (element: any) => element.tag);
 
-      // @ts-ignore
-      return { ...acc, [key]: R.Union(...union) };
+      return { ...acc, [key]: flatten(...union) };
     }
 
     if (rightValue.tag === "union") {
-      return { ...acc, [key]: mergeWithUnion(rightValue, leftValue) };
+      return { ...acc, [key]: flatten(rightValue, leftValue) };
     }
 
     if (leftValue.tag === "union") {
-      return { ...acc, [key]: mergeWithUnion(leftValue, rightValue) };
+      return { ...acc, [key]: flatten(leftValue, rightValue) };
+    }
+
+    // Both are arrays, merge, but omit any unknowns (unless it's still unknown)
+    if (leftValue.tag === "array" && rightValue.tag === "array") {
+      // If the elements of the array are still unknown then just continue and return one of them
+      if (
+        [leftValue.element, rightValue.element].every(
+          (element) => element.tag === "unknown"
+        )
+      ) {
+        return { ...acc, [key]: leftValue };
+      }
+
+      // If one of them is unknown then omit it ...
+      const elements = [leftValue.element, rightValue.element].filter(
+        (element) => element.tag !== "unknown"
+      );
+
+      // ... and clone over the other element and continue on
+      const arrayElements =
+        elements.length === 1 ? [elements[0], elements[0]] : elements;
+
+      // If both elements are records, merge them, otherwise merge the fields
+      const fn = elements.every((element) => element.tag === "record")
+        ? mergeRuntypes
+        : mergeFields;
+
+      return {
+        ...acc,
+        // @ts-ignore
+        [key]: R.Array(fn(arrayElements[0], arrayElements[1])),
+      };
     }
 
     // Same value but not unions, just return the left
@@ -79,7 +113,7 @@ const mergeFields = (
       return { ...acc, [key]: leftValue };
     }
 
-    return { ...acc, [key]: R.Union(leftValue, rightValue) };
+    return { ...acc, [key]: flatten(leftValue, rightValue) };
   }, {});
 };
 

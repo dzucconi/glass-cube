@@ -6,7 +6,12 @@ export type Node =
   | R.Boolean
   | R.Literal<null | undefined>
   | R.Array<Node, false>
+  | R.Union1<any>
   | R.Union2<any, any>
+  | R.Union3<any, any, any>
+  | R.Union4<any, any, any, any>
+  | R.Union5<any, any, any, any, any>
+  | R.Union6<any, any, any, any, any, any>
   | R.Unknown
   | R.Record<Record<string, Node>, false>;
 
