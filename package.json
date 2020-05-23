@@ -1,6 +1,6 @@
 {
   "name": "white-cube",
-  "version": "0.0.0-development",
+  "version": "1.0.1",
   "description": "Black box runtype generation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
