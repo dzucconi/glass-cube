@@ -36,7 +36,7 @@ describe("runtypeToCode", () => {
         })
       )
     ).toEqual(
-      "R.Record({ foo: R.Record({ bar: R.String.Or(R.Undefined) }).Or(R.Null) })"
+      'R.Record({ "foo": R.Record({ "bar": R.String.Or(R.Undefined) }).Or(R.Null) })'
     );
   });
 });

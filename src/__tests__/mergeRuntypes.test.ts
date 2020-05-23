@@ -42,7 +42,7 @@ describe("mergeRuntypes", () => {
     const ExampleJ = mergeRuntypes(ExampleI, ExampleH);
 
     expect(runtypeToCode(ExampleJ)).toEqual(
-      "R.Record({ foo: R.Null.Or(R.String) })"
+      'R.Record({ "foo": R.Null.Or(R.String) })'
     );
   });
 
@@ -70,7 +70,9 @@ describe("mergeRuntypes", () => {
           )
         )
       )
-    ).toEqual("R.Record({ foo: R.Record({ bar: R.String.Or(R.Undefined) }) })");
+    ).toEqual(
+      `R.Record({ "foo": R.Record({ "bar": R.String.Or(R.Undefined) }) })`
+    );
   });
 
   it("handles arrays", () => {
@@ -80,7 +82,7 @@ describe("mergeRuntypes", () => {
 
     expect(
       runtypeToCode(reduceRuntypes([ExampleA, ExampleB, ExampleC])!)
-    ).toEqual("R.Record({ foo: R.Null.Or(R.Array(R.String)) })");
+    ).toEqual('R.Record({ "foo": R.Null.Or(R.Array(R.String)) })');
   });
 
   it("handles arrays of records", () => {
@@ -91,7 +93,7 @@ describe("mergeRuntypes", () => {
     ])!;
 
     expect(runtypeToCode(Example)).toEqual(
-      "R.Record({ foo: R.Array(R.Record({ baz: R.Boolean.Or(R.String), bar: R.String.Or(R.Undefined) })) })"
+      'R.Record({ "foo": R.Array(R.Record({ "baz": R.Boolean.Or(R.String), "bar": R.String.Or(R.Undefined) })) })'
     );
   });
 
@@ -101,7 +103,7 @@ describe("mergeRuntypes", () => {
       const runtype = reduceRuntypes(runtypes)!;
 
       expect(runtypeToCode(runtype)).toEqual(
-        "R.Record({ image_url: R.String.Or(R.Null), image_versions: R.Array(R.String), image_urls: R.Record({ large_rectangle: R.String.Or(R.Undefined), square: R.String.Or(R.Undefined), wide: R.String.Or(R.Undefined), source: R.String.Or(R.Undefined) }) })"
+        'R.Record({ "image_url": R.String.Or(R.Null), "image_versions": R.Array(R.String), "image_urls": R.Record({ "large_rectangle": R.String.Or(R.Undefined), "square": R.String.Or(R.Undefined), "wide": R.String.Or(R.Undefined), "source": R.String.Or(R.Undefined) }) })'
       );
     });
 
@@ -113,7 +115,7 @@ describe("mergeRuntypes", () => {
           )!
         )
       ).toEqual(
-        "R.Record({ foo: R.Null.Or(R.String).Or(R.Undefined).Or(R.Number) })"
+        'R.Record({ "foo": R.Null.Or(R.String).Or(R.Undefined).Or(R.Number) })'
       );
     });
 
@@ -126,7 +128,7 @@ describe("mergeRuntypes", () => {
       expect(
         runtypeToCode(reduceRuntypes(nextRuntypes, initialRuntype)!)
       ).toEqual(
-        "R.Record({ foo: R.Null.Or(R.Undefined).Or(R.String), bar: R.String.Or(R.Undefined), baz: R.String.Or(R.Undefined) })"
+        'R.Record({ "foo": R.Null.Or(R.Undefined).Or(R.String), "bar": R.String.Or(R.Undefined), "baz": R.String.Or(R.Undefined) })'
       );
     });
   });

@@ -63,7 +63,7 @@ export const jsonToCode = (value: any): string => {
 
   return `R.Record({ ${Object.entries(value)
     .map(([key, value]) => {
-      return `${key}: ${jsonToCode(value)}`;
+      return `"${key}": ${jsonToCode(value)}`;
     })
     .join(", ")} })`;
 };
