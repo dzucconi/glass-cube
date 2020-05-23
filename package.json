@@ -3,6 +3,7 @@
   "version": "0.0.0-development",
   "description": "Black box runtype generation",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "repository": "https://github.com/dzucconi/white-cube",
   "author": "dzucconi",
   "license": "MIT",
