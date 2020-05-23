@@ -1,19 +1,26 @@
 import * as R from "runtypes";
 
-export type Element =
-  | R.String
-  | R.Number
-  | R.Boolean
-  | R.Literal<null | undefined>
-  | R.Array<Element, false>
+export type UnionElement =
   | R.Union1<any>
   | R.Union2<any, any>
   | R.Union3<any, any, any>
   | R.Union4<any, any, any, any>
   | R.Union5<any, any, any, any, any>
-  | R.Union6<any, any, any, any, any, any>
+  | R.Union6<any, any, any, any, any, any>;
+
+export type RecordElement = R.Record<Record<string, Element>, false>;
+
+export type ArrayElement = R.Array<Element, false>;
+
+export type Element =
+  | R.String
+  | R.Number
+  | R.Boolean
   | R.Unknown
-  | R.Record<Record<string, Element>, false>;
+  | R.Literal<null | undefined>
+  | ArrayElement
+  | UnionElement
+  | RecordElement;
 
 export const runtypeToCode = (value: Element): string => {
   if (value.tag === "string") {

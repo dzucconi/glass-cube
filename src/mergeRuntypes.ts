@@ -1,6 +1,11 @@
 import * as R from "runtypes";
 import { uniqBy, flattenDeep, uniq } from "lodash";
-import { Element } from "./runtypeToCode";
+import {
+  Element,
+  UnionElement,
+  RecordElement,
+  ArrayElement,
+} from "./runtypeToCode";
 
 export const flattenUnions = (alternatives: Element[]): Element[] => {
   return flattenDeep(
@@ -28,80 +33,95 @@ export const flatten = (...elements: Element[]) => {
   return R.Union(...uniqBy(flattened, pluckTag));
 };
 
+const isUnion = (element: Element): element is UnionElement =>
+  element.tag === "union";
+
+const isUndefined = (element: Element) =>
+  element.tag === "literal" && element.value === undefined;
+
+const isMissing = (element?: Element): element is undefined =>
+  element === undefined;
+
+const isRecord = (element: Element): element is RecordElement =>
+  element.tag === "record";
+
+const isArray = (element: Element): element is ArrayElement =>
+  element.tag === "array";
+
+const isUnknownArray = (
+  element: Element
+): element is R.Array<R.Unknown, false> =>
+  isArray(element) && element.element.tag === "unknown";
+
+const isEquivalent = (leftElement: Element, rightElement: Element) =>
+  pluckTag(leftElement) === pluckTag(rightElement);
+
 export const mergeElements = (
   left: Record<string, any>,
   right: Record<string, any>
 ): {} => {
   return Object.keys(left).reduce((acc, key) => {
-    const rightValue = right[key];
-    const leftValue = left[key];
+    const rightElement: Element = right[key];
+    const leftElement: Element = left[key];
 
-    // If the key is completely missing but we've already got a union with a literal undefined in it, return the union
+    // If the key is completely missing but we've already got a union with
+    // a literal undefined in it, return the union:
     if (
-      rightValue === undefined &&
-      leftValue.tag === "union" &&
-      leftValue.alternatives.some(
-        (element: Element) =>
-          element.tag === "literal" && element.value === undefined
-      )
+      isMissing(rightElement) &&
+      isUnion(leftElement) &&
+      leftElement.alternatives.some(isUndefined)
     ) {
-      return { ...acc, [key]: leftValue };
+      return { ...acc, [key]: leftElement };
     }
 
-    // If the key is completely missing, union with undefined
-    if (rightValue === undefined) {
-      return { ...acc, [key]: flatten(leftValue, R.Undefined) };
+    // If the key is completely missing, union with undefined:
+    if (isMissing(rightElement)) {
+      return { ...acc, [key]: flatten(leftElement, R.Undefined) };
     }
 
-    // Both records, then recursively merge
-    if (rightValue.tag === "record" && leftValue.tag === "record") {
-      return { ...acc, [key]: mergeRuntypes(rightValue, leftValue) };
+    // Both records? Then recursively merge:
+    if (isRecord(rightElement) && isRecord(leftElement)) {
+      return { ...acc, [key]: mergeRuntypes(rightElement, leftElement) };
     }
 
-    // Both unions, then flatten them out and unique the values into a new union
-    if (rightValue.tag === "union" && leftValue.tag === "union") {
+    // Both unions, then flatten them out and unique the values into a new union:
+    if (isUnion(rightElement) && isUnion(leftElement)) {
       const alternatives = flattenUnions([
-        ...leftValue.alternatives,
-        ...rightValue.alternatives,
+        ...leftElement.alternatives,
+        ...rightElement.alternatives,
       ]);
       const union = uniqBy(alternatives, (element: Element) => element.tag);
       return { ...acc, [key]: flatten(...union) };
     }
 
-    if (rightValue.tag === "union") {
-      return { ...acc, [key]: flatten(rightValue, leftValue) };
+    if (isUnion(rightElement)) {
+      return { ...acc, [key]: flatten(rightElement, leftElement) };
     }
 
-    if (leftValue.tag === "union") {
-      return { ...acc, [key]: flatten(leftValue, rightValue) };
+    if (isUnion(leftElement)) {
+      return { ...acc, [key]: flatten(leftElement, rightElement) };
     }
 
-    // Both are arrays but elements of array are still unknown, then just continue and return one of them
-    if (
-      leftValue.tag === "array" &&
-      rightValue.tag === "array" &&
-      [leftValue.element, rightValue.element].every(
-        (element) => element.tag === "unknown"
-      )
-    ) {
-      return { ...acc, [key]: leftValue };
+    // Both are arrays but elements of array are still unknown,
+    // then just continue and return one of them:
+    if ([leftElement, rightElement].every(isUnknownArray)) {
+      return { ...acc, [key]: leftElement };
     }
 
-    // Both are arrays, merge, but omit any unknowns (unless it's still unknown)
-    if (leftValue.tag === "array" && rightValue.tag === "array") {
+    // Both are arrays, merge, but omit any unknowns:
+    if (isArray(leftElement) && isArray(rightElement)) {
       // If one of them is unknown then omit it ...
-      const elements = [leftValue.element, rightValue.element].filter(
-        (element) => element.tag !== "unknown"
-      );
+      const elements: Element[] = [
+        leftElement.element,
+        rightElement.element,
+      ].filter((element) => element.tag !== "unknown");
 
       // ... and clone over the other element and continue on
       const arrayElements =
         elements.length === 1 ? [elements[0], elements[0]] : elements;
 
       // If both elements are records, merge them, otherwise merge the fields
-      const fn = elements.every((element) => element.tag === "record")
-        ? mergeRuntypes
-        : mergeElements;
+      const fn = elements.every(isRecord) ? mergeRuntypes : mergeElements;
 
       return {
         ...acc,
@@ -110,19 +130,16 @@ export const mergeElements = (
       };
     }
 
-    // Same value but not unions, just return the left
-    if (leftValue.tag === rightValue.tag) {
-      return { ...acc, [key]: leftValue };
+    // If both elements are equivalent, return the left
+    if (isEquivalent(leftElement, rightElement)) {
+      return { ...acc, [key]: leftElement };
     }
 
-    return { ...acc, [key]: flatten(leftValue, rightValue) };
+    return { ...acc, [key]: flatten(leftElement, rightElement) };
   }, {});
 };
 
-export const mergeRuntypes = (
-  left: R.Record<Record<string, any>, false>,
-  right: R.Record<Record<string, any>, false>
-) => {
+export const mergeRuntypes = (left: RecordElement, right: RecordElement) => {
   return R.Record({
     ...mergeElements(left.fields, right.fields),
     ...mergeElements(right.fields, left.fields),
