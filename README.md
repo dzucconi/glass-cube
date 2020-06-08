@@ -11,7 +11,7 @@ yarn add glass-cube --dev
 -----
 
 ```ts
-import { jsonToRuntype } from "glass-cube";
+import { jsonToRuntype, runtypeToCode, mergeRuntypes } from "glass-cube";
 
 const responseA = {
   foo: "bar",
@@ -24,16 +24,8 @@ const RuntypeA = jsonToRuntype(responseA);
 
 RuntypeA.check(responseA); // ✅ => responseA
 RuntypeA.check({ foo: "bar" }); // ❌ => Uncaught ValidationError: Expected number, but was undefined
-```
-
-```ts
-import { runtypeToCode } from "glass-cube";
 
 runtypeToCode(RuntypeA); // => 'R.Record({ "foo": R.String, "bar": R.Number, "baz": R.Null, "qux": R.Record({ "foo": R.Array(R.Number.Or(R.String)), "nested": R.Boolean }) })'
-```
-
-```ts
-import { mergeRuntypes } from "glass-cube";
 
 const responseB = {
   foo: "baz",
