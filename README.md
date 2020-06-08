@@ -1,6 +1,6 @@
 # glass-cube
 
-Generate [Runtypes](https://github.com/pelotom/runtypes) from JSON responses, merge Runtypes, and generate code from Runtypes.
+Generate [Runtypes](https://github.com/pelotom/runtypes) from JSON responses, merge Runtypes, and generate code from Runtypes. Use it to generate a comprehensive Runtype for a given API response by reducing Runtypes from disparate API responses.
 
 ## Getting Started
 
