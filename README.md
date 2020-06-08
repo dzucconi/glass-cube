@@ -2,8 +2,6 @@
 
 Generate [Runtypes](https://github.com/pelotom/runtypes) from JSON responses, merge Runtypes, and generate code from Runtypes.
 
-## JSON => Runtype
-
 ```ts
 import { jsonToRuntype } from "glass-cube";
 
