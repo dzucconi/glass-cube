@@ -11,7 +11,7 @@ yarn add glass-cube --dev
 -----
 
 ```ts
-import { jsonToRuntype, runtypeToCode, mergeRuntypes } from "glass-cube";
+import { jsonToRuntype, runtypeToCode, mergeRuntypes, writeRuntype } from "glass-cube";
 
 const responseA = {
   foo: "bar",
@@ -44,4 +44,23 @@ RuntypeC.check(responseA); // ✅
 RuntypeC.check(responseB); // ✅
 
 runtypeToCode(RuntypeC); // => 'R.Record({ "foo": R.String, "bar": R.Number, "baz": R.String.Or(R.Null), "qux": R.Null.Or(R.Record({ "foo": R.Array(R.Number.Or(R.String)), "nested": R.Boolean })) })'
+
+writeRuntype({ object: RuntypeC, name: 'Example', path: '.' }) // => Wrote: ./Example.ts
+
+/**
+ * Example.ts:
+ *
+ * import * as R from "runtypes";
+ * 
+ * export const Example = R.Record({
+ *   foo: R.String,
+ *   bar: R.Number,
+ *   baz: R.String.Or(R.Null),
+ *   qux: R.Null.Or(
+ *     R.Record({ foo: R.Array(R.Number.Or(R.String)), nested: R.Boolean })
+ *   ),
+ * });
+ * 
+ * export type Example = R.Static<typeof Example>;
+ */
 ```
