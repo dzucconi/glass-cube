@@ -2916,10 +2916,10 @@ rsvp@^4.8.4:
   resolved "https://registry.yarnpkg.com/rsvp/-/rsvp-4.8.5.tgz#c8f155311d167f68f21e168df71ec5b083113734"
   integrity sha512-nfMOlASu9OnRJo1mbEk2cz0D56a1MBNrJ7orjRZQG10XDyuvwksKbuXNp6qa+kbn839HwjwhBzhFmdsaEAfauA==
 
-runtypes@^4.2.0:
-  version "4.2.0"
-  resolved "https://registry.yarnpkg.com/runtypes/-/runtypes-4.2.0.tgz#6bb01a4683c1ac76015de8669df32a034c6cb0fe"
-  integrity sha512-s89DYbxI7qKSpDMmdKQCGg61nH45tYA5LJMR0pWfJ/1nwPdpww75fusQqGzXE7llpk+rwe8fNPSx78FRGKenJg==
+runtypes@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/runtypes/-/runtypes-5.0.0.tgz#c0e3dab2f48a6dbe740a93332344dfd12140aef2"
+  integrity sha512-09RHUW0QYf768M7FPGZu8oyJTCzV/THSH9n9qhAohmSzDCI9uK9l3L5unb2O3ISnMDPtIRfJJ/2zipznKcZ1cQ==
 
 safe-buffer@^5.0.1, safe-buffer@^5.1.2:
   version "5.2.1"
