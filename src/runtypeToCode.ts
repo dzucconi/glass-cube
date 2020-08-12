@@ -8,7 +8,7 @@ export type UnionElement =
   | R.Union5<any, any, any, any, any>
   | R.Union6<any, any, any, any, any, any>;
 
-export type RecordElement = R.Record<Record<string, Element>, false>;
+export type RecordElement = R.Record<{ [key: string]: Element }, false>;
 
 export type ArrayElement = R.Array<Element, false>;
 
