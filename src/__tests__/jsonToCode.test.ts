@@ -1,4 +1,3 @@
-import { format } from "prettier";
 import { jsonToCode } from "../jsonToCode";
 
 describe("jsonToCode", () => {

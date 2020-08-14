@@ -1,5 +1,5 @@
 import fs from "fs";
-import { format } from "prettier";
+import { format } from "prettier/standalone";
 import { jsonToCode } from "./jsonToCode";
 import { runtypeToCode } from "./runtypeToCode";
 
