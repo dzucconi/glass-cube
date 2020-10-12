@@ -102,13 +102,11 @@ describe("mergeRuntypes", () => {
       foo: R.Null.Or(R.Array(R.Unknown)),
     });
 
-    const knownRuntype = R.Record({
-      foo: R.Array(R.String),
-    });
+    const knownRuntype = R.Record({ foo: R.Array(R.String) });
 
     expect(
       runtypeToCode(mergeRuntypes(nullableUnknownRuntype, knownRuntype))
-    ).toEqual('R.Record({ "foo": R.Null.Or(R.Array(R.String)) })');
+    ).toEqual('R.Record({ "foo": R.Array(R.String).Or(R.Null) })');
   });
 
   describe("reduceRuntypes", () => {
@@ -129,7 +127,7 @@ describe("mergeRuntypes", () => {
           )!
         )
       ).toEqual(
-        'R.Record({ "foo": R.Null.Or(R.String).Or(R.Undefined).Or(R.Number) })'
+        'R.Record({ "foo": R.Number.Or(R.Null).Or(R.String).Or(R.Undefined) })'
       );
     });
 
@@ -142,7 +140,7 @@ describe("mergeRuntypes", () => {
       expect(
         runtypeToCode(reduceRuntypes(nextRuntypes, initialRuntype)!)
       ).toEqual(
-        'R.Record({ "foo": R.Null.Or(R.Undefined).Or(R.String), "bar": R.String.Or(R.Undefined), "baz": R.String.Or(R.Undefined) })'
+        'R.Record({ "foo": R.String.Or(R.Null).Or(R.Undefined), "bar": R.String.Or(R.Undefined), "baz": R.String.Or(R.Undefined) })'
       );
     });
   });

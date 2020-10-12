@@ -94,14 +94,6 @@ export const mergeElements = (
       return { ...acc, [key]: flatten(...union) };
     }
 
-    if (isUnion(rightElement)) {
-      return { ...acc, [key]: flatten(rightElement, leftElement) };
-    }
-
-    if (isUnion(leftElement)) {
-      return { ...acc, [key]: flatten(leftElement, rightElement) };
-    }
-
     // Both are arrays but elements of array are still unknown,
     // then just continue and return one of them:
     if ([leftElement, rightElement].every(isUnknownArray)) {
