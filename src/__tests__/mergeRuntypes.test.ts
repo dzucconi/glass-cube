@@ -97,6 +97,20 @@ describe("mergeRuntypes", () => {
     );
   });
 
+  it("handles arrays of nullable unknown to arrays of knowns", () => {
+    const nullableUnknownRuntype = R.Record({
+      foo: R.Null.Or(R.Array(R.Unknown)),
+    });
+
+    const knownRuntype = R.Record({
+      foo: R.Array(R.String),
+    });
+
+    expect(
+      runtypeToCode(mergeRuntypes(nullableUnknownRuntype, knownRuntype))
+    ).toEqual('R.Record({ "foo": R.Null.Or(R.Array(R.String)) })');
+  });
+
   describe("reduceRuntypes", () => {
     it("it merges real world runtypes", () => {
       const runtypes = FEATURES.map(jsonToRuntype);
