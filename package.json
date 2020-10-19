@@ -22,7 +22,7 @@
     "@types/jest": "26.0.14",
     "@types/node": "14.11.10",
     "auto": "9.59.1",
-    "jest": "26.5.3",
+    "jest": "26.6.0",
     "ts-jest": "26.4.1",
     "ts-node": "8.10.2",
     "typescript": "3.9.7"
