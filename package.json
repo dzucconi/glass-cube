@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/jest": "26.0.15",
     "@types/node": "14.14.2",
-    "auto": "9.60.0",
+    "auto": "9.60.1",
     "jest": "26.6.1",
     "ts-jest": "26.4.2",
     "ts-node": "8.10.2",
