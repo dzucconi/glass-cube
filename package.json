@@ -19,7 +19,7 @@
     "watch": "tsc -w -p ."
   },
   "devDependencies": {
-    "@types/jest": "26.0.17",
+    "@types/jest": "26.0.18",
     "@types/node": "14.14.11",
     "auto": "9.61.0",
     "jest": "26.6.3",
