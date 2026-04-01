@@ -8,19 +8,15 @@ const isNull = (value: unknown) => value === null;
 
 const isUndefined = (value: unknown) => value === undefined;
 
-const isPrimitive = (value: unknown) =>
-  isString(value) ||
-  isNumber(value) ||
-  isBoolean(value) ||
-  isNull(value) ||
-  isUndefined(value);
-
 const isArray = (value: unknown): value is unknown[] => Array.isArray(value);
 
 const isEmptyArray = (value: unknown) => isArray(value) && value.length === 0;
 
-const isPrimitiveArray = (value: unknown) =>
-  isArray(value) && value.every(isPrimitive);
+const joinOrTypes = (types: string[]) =>
+  types.reduce((acc, type) => {
+    if (acc === "") return type;
+    return `${acc}.Or(${type})`;
+  }, "");
 
 export const jsonToCode = (value: any): string => {
   if (isString(value)) {
@@ -47,18 +43,8 @@ export const jsonToCode = (value: any): string => {
     return "R.Array(R.Unknown)";
   }
 
-  if (isPrimitiveArray(value)) {
-    return `R.Array(${[...new Set(value.map(jsonToCode))].reduce(
-      (acc, type) => {
-        if (acc === "") return type;
-        return `${acc}.Or(${type})`;
-      },
-      ""
-    )})`;
-  }
-
   if (isArray(value)) {
-    return `R.Array(${jsonToCode(value[0])})`;
+    return `R.Array(${joinOrTypes([...new Set(value.map(jsonToCode))])})`;
   }
 
   return `R.Record({ ${Object.entries(value)
