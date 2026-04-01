@@ -39,4 +39,14 @@ describe("runtypeToCode", () => {
       'R.Record({ "foo": R.Record({ "bar": R.String.Or(R.Undefined) }).Or(R.Null) })'
     );
   });
+
+  it("escapes keys when generating code", () => {
+    expect(
+      runtypeToCode(
+        R.Record({
+          'foo"bar': R.String,
+        } as any)
+      )
+    ).toEqual('R.Record({ "foo\\"bar": R.String })');
+  });
 });

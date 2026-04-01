@@ -30,6 +30,12 @@ describe("jsonToCode", () => {
     );
   });
 
+  it("escapes keys when generating code", () => {
+    expect(jsonToCode({ 'foo"bar': true })).toEqual(
+      'R.Record({ "foo\\"bar": R.Boolean })'
+    );
+  });
+
   it("supports heterogeneous arrays of objects", () => {
     expect(
       jsonToCode({ foo: [{ bar: "baz" }, { qux: 1 }] })
