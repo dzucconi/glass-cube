@@ -26,6 +26,12 @@ describe("runtypeToCode", () => {
     expect(runtypeToCode(R.Union(R.String))).toEqual("R.String");
   });
 
+  it("works on literals", () => {
+    expect(runtypeToCode(R.Literal("foo"))).toEqual('R.Literal("foo")');
+    expect(runtypeToCode(R.Literal(2))).toEqual("R.Literal(2)");
+    expect(runtypeToCode(R.Literal(true))).toEqual("R.Literal(true)");
+  });
+
   it("works on records", () => {
     expect(
       runtypeToCode(
@@ -38,5 +44,15 @@ describe("runtypeToCode", () => {
     ).toEqual(
       'R.Record({ "foo": R.Record({ "bar": R.String.Or(R.Undefined) }).Or(R.Null) })'
     );
+  });
+
+  it("escapes keys when generating code", () => {
+    expect(
+      runtypeToCode(
+        R.Record({
+          'foo"bar': R.String,
+        })
+      )
+    ).toEqual('R.Record({ "foo\\"bar": R.String })');
   });
 });

@@ -4,6 +4,9 @@
   "description": "Runtype generation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "glass-cube": "dist/cli.js"
+  },
   "repository": "https://github.com/dzucconi/glass-cube",
   "author": "dzucconi",
   "license": "MIT",
@@ -28,8 +31,6 @@
     "typescript": "3.9.9"
   },
   "dependencies": {
-    "@types/lodash": "^4.14.159",
-    "lodash": "^4.17.19",
     "prettier": "^2.2.1",
     "runtypes": "^5.0.1"
   },

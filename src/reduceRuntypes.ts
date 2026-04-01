@@ -1,7 +1,7 @@
-import * as R from "runtypes";
 import { mergeRuntypes } from "./mergeRuntypes";
+import { RecordElement } from "./runtypeToCode";
 
-type Runtype = R.Record<Record<string, any>, false>;
+type Runtype = RecordElement;
 
 export const reduceRuntypes = (
   runtypes: Runtype[],

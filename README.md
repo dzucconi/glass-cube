@@ -8,10 +8,15 @@ Generate [Runtypes](https://github.com/pelotom/runtypes) from JSON responses, me
 yarn add glass-cube --dev
 ```
 
------
+---
 
 ```ts
-import { jsonToRuntype, runtypeToCode, mergeRuntypes, writeRuntype } from "glass-cube";
+import {
+  jsonToRuntype,
+  runtypeToCode,
+  mergeRuntypes,
+  writeRuntype,
+} from "glass-cube";
 
 const responseA = {
   foo: "bar",
@@ -45,13 +50,13 @@ RuntypeC.check(responseB); // ✅
 
 runtypeToCode(RuntypeC); // => 'R.Record({ "foo": R.String, "bar": R.Number, "baz": R.String.Or(R.Null), "qux": R.Null.Or(R.Record({ "foo": R.Array(R.Number.Or(R.String)), "nested": R.Boolean })) })'
 
-writeRuntype({ object: RuntypeC, name: 'Example', path: '.' }) // => Wrote: ./Example.ts
+writeRuntype({ object: RuntypeC, name: "Example", path: "." }); // => Wrote: ./Example.ts
 
 /**
  * Example.ts:
  *
  * import * as R from "runtypes";
- * 
+ *
  * export const Example = R.Record({
  *   foo: R.String,
  *   bar: R.Number,
@@ -60,7 +65,72 @@ writeRuntype({ object: RuntypeC, name: 'Example', path: '.' }) // => Wrote: ./Ex
  *     R.Record({ foo: R.Array(R.Number.Or(R.String)), nested: R.Boolean })
  *   ),
  * });
- * 
+ *
  * export type Example = R.Static<typeof Example>;
  */
+```
+
+## Streaming Aggregation
+
+For large response sets, use the streaming aggregator:
+
+```ts
+import { createAggregator } from "glass-cube";
+
+const aggregator = createAggregator({
+  requiredFieldThreshold: 0.95,
+  nullHandling: "missing", // "preserve" | "missing"
+});
+
+for (const response of responses) {
+  aggregator.add(response);
+}
+
+const result = aggregator.finalize();
+
+if (result) {
+  console.log(result.count); // sample count
+  console.log(result.code); // runtype code
+}
+```
+
+## Additional Emitters
+
+The schema IR can emit JSON Schema and TypeScript:
+
+```ts
+import {
+  createAggregator,
+  schemaNodeToJSONSchema,
+  schemaNodeToTypeScript,
+  schemaNodeToZod,
+} from "glass-cube";
+
+const result = createAggregator().finalize();
+
+if (result) {
+  const jsonSchema = schemaNodeToJSONSchema(result.schema);
+  const typeSource = schemaNodeToTypeScript(result.schema);
+  const zodSource = schemaNodeToZod(result.schema);
+}
+```
+
+## CLI
+
+Infer from JSON, JSON array, JSONL, or NDJSON files:
+
+```sh
+glass-cube --input ./responses.ndjson --format runtype
+glass-cube --input ./responses.ndjson --format jsonschema --out ./schema.json
+glass-cube --input ./responses.ndjson --format typescript
+glass-cube --input ./responses.ndjson --format zod
+```
+
+Compare schema drift between two datasets:
+
+```sh
+glass-cube \
+  --input ./responses-new.ndjson \
+  --compare ./responses-baseline.ndjson \
+  --format diff
 ```

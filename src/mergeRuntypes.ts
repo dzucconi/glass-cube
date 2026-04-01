@@ -1,46 +1,22 @@
 import * as R from "runtypes";
-import { uniqBy, flattenDeep, uniq } from "lodash";
 import {
   Element,
-  UnionElement,
   RecordElement,
   ArrayElement,
 } from "./runtypeToCode";
 
 export const flattenUnions = (alternatives: Element[]): Element[] => {
-  return flattenDeep(
-    alternatives.map((element) => {
-      if (element.tag === "union") {
-        return flattenUnions(element.alternatives);
-      }
+  return alternatives.reduce((acc: Element[], element) => {
+    if (element.tag === "union") {
+      return acc.concat(flattenUnions(element.alternatives));
+    }
 
-      return element;
-    })
-  );
+    return acc.concat(element);
+  }, []);
 };
 
 export const pluckTag = (element: Element) =>
   element.tag === "literal" ? `${element.tag}:${element.value}` : element.tag;
-
-export const flatten = (...elements: Element[]) => {
-  const flattened = flattenDeep(
-    elements.map((element) =>
-      element.tag === "union" ? flattenUnions(element.alternatives) : [element]
-    )
-  );
-
-  // @ts-ignore
-  return R.Union(...uniqBy(flattened, pluckTag));
-};
-
-const isUnion = (element: Element): element is UnionElement =>
-  element.tag === "union";
-
-const isUndefined = (element: Element) =>
-  element.tag === "literal" && element.value === undefined;
-
-const isMissing = (element?: Element): element is undefined =>
-  element === undefined;
 
 const isRecord = (element: Element): element is RecordElement =>
   element.tag === "record";
@@ -48,87 +24,108 @@ const isRecord = (element: Element): element is RecordElement =>
 const isArray = (element: Element): element is ArrayElement =>
   element.tag === "array";
 
-const isUnknownArray = (
-  element: Element
-): element is R.Array<R.Unknown, false> =>
-  isArray(element) && element.element.tag === "unknown";
+const flattenElements = (elements: Element[]) =>
+  elements.reduce((acc: Element[], element) => {
+    if (element.tag === "union") {
+      return acc.concat(flattenUnions(element.alternatives));
+    }
 
-const isEquivalent = (leftElement: Element, rightElement: Element) =>
-  pluckTag(leftElement) === pluckTag(rightElement);
+    return acc.concat(element);
+  }, []);
+
+const mergeArrays = (left: ArrayElement, right: ArrayElement): ArrayElement => {
+  if (left.element.tag === "unknown") {
+    return right;
+  }
+
+  if (right.element.tag === "unknown") {
+    return left;
+  }
+
+  // @ts-ignore
+  return R.Array(flatten(left.element, right.element));
+};
+
+const toElement = (elements: Element[]): Element => {
+  if (elements.length === 0) {
+    return R.Unknown;
+  }
+
+  if (elements.length === 1) {
+    return elements[0];
+  }
+
+  // @ts-ignore
+  return R.Union(...elements);
+};
+
+export const flatten = (...elements: Element[]): Element => {
+  const merged: Element[] = [];
+  const seen = new Set<string>();
+
+  flattenElements(elements).forEach((element) => {
+    if (isRecord(element)) {
+      const index = merged.findIndex(isRecord);
+
+      if (index === -1) {
+        merged.push(element);
+      } else {
+        merged[index] = mergeRuntypes(merged[index] as RecordElement, element);
+      }
+
+      return;
+    }
+
+    if (isArray(element)) {
+      const index = merged.findIndex(isArray);
+
+      if (index === -1) {
+        merged.push(element);
+      } else {
+        merged[index] = mergeArrays(merged[index] as ArrayElement, element);
+      }
+
+      return;
+    }
+
+    const key = pluckTag(element);
+
+    if (!seen.has(key)) {
+      merged.push(element);
+      seen.add(key);
+    }
+  });
+
+  return toElement(merged);
+};
+
+const mergeElement = (
+  leftElement: Element | undefined,
+  rightElement: Element | undefined
+): Element => {
+  if (leftElement === undefined && rightElement === undefined) {
+    return R.Undefined;
+  }
+
+  if (leftElement === undefined) {
+    return flatten(rightElement as Element, R.Undefined);
+  }
+
+  if (rightElement === undefined) {
+    return flatten(leftElement, R.Undefined);
+  }
+
+  return flatten(leftElement, rightElement);
+};
 
 export const mergeElements = (
-  left: Record<string, any>,
-  right: Record<string, any>
-): {} => {
+  left: Record<string, Element>,
+  right: Record<string, Element>
+): Record<string, Element> => {
   return Object.keys(left).reduce((acc, key) => {
-    const rightElement: Element = right[key];
-    const leftElement: Element = left[key];
-
-    // If the key is completely missing but we've already got a union with
-    // a literal undefined in it, return the union:
-    if (
-      isMissing(rightElement) &&
-      isUnion(leftElement) &&
-      leftElement.alternatives.some(isUndefined)
-    ) {
-      return { ...acc, [key]: leftElement };
-    }
-
-    // If the key is completely missing, union with undefined:
-    if (isMissing(rightElement)) {
-      return { ...acc, [key]: flatten(leftElement, R.Undefined) };
-    }
-
-    // Both records? Then recursively merge:
-    if (isRecord(rightElement) && isRecord(leftElement)) {
-      return { ...acc, [key]: mergeRuntypes(rightElement, leftElement) };
-    }
-
-    // Both unions, then flatten them out and unique the values into a new union:
-    if (isUnion(rightElement) && isUnion(leftElement)) {
-      const alternatives = flattenUnions([
-        ...leftElement.alternatives,
-        ...rightElement.alternatives,
-      ]);
-      const union = uniqBy(alternatives, (element: Element) => element.tag);
-      return { ...acc, [key]: flatten(...union) };
-    }
-
-    // Both are arrays but elements of array are still unknown,
-    // then just continue and return one of them:
-    if ([leftElement, rightElement].every(isUnknownArray)) {
-      return { ...acc, [key]: leftElement };
-    }
-
-    // Both are arrays, merge, but omit any unknowns:
-    if (isArray(leftElement) && isArray(rightElement)) {
-      // If one of them is unknown then omit it ...
-      const elements: Element[] = [
-        leftElement.element,
-        rightElement.element,
-      ].filter((element) => element.tag !== "unknown");
-
-      // ... and clone over the other element and continue on
-      const arrayElements =
-        elements.length === 1 ? [elements[0], elements[0]] : elements;
-
-      // If both elements are records, merge them, otherwise merge the fields
-      const fn = elements.every(isRecord) ? mergeRuntypes : mergeElements;
-
-      return {
-        ...acc,
-        // @ts-ignore
-        [key]: R.Array(fn(arrayElements[0], arrayElements[1])),
-      };
-    }
-
-    // If both elements are equivalent, return the left
-    if (isEquivalent(leftElement, rightElement)) {
-      return { ...acc, [key]: leftElement };
-    }
-
-    return { ...acc, [key]: flatten(leftElement, rightElement) };
-  }, {});
+    acc[key] = mergeElement(left[key], right[key]);
+    return acc;
+  }, {} as Record<string, Element>);
 };
 
 export const mergeRuntypes = (left: RecordElement, right: RecordElement) => {
