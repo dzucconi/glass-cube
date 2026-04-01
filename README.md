@@ -64,3 +64,65 @@ writeRuntype({ object: RuntypeC, name: 'Example', path: '.' }) // => Wrote: ./Ex
  * export type Example = R.Static<typeof Example>;
  */
 ```
+
+## Streaming Aggregation
+
+For large response sets, use the streaming aggregator:
+
+```ts
+import { createAggregator } from "glass-cube";
+
+const aggregator = createAggregator({
+  requiredFieldThreshold: 0.95,
+  nullHandling: "missing", // "preserve" | "missing"
+});
+
+for (const response of responses) {
+  aggregator.add(response);
+}
+
+const result = aggregator.finalize();
+
+if (result) {
+  console.log(result.count); // sample count
+  console.log(result.code); // runtype code
+}
+```
+
+## Additional Emitters
+
+The schema IR can emit JSON Schema and TypeScript:
+
+```ts
+import {
+  createAggregator,
+  schemaNodeToJSONSchema,
+  schemaNodeToTypeScript,
+} from "glass-cube";
+
+const result = createAggregator().finalize();
+
+if (result) {
+  const jsonSchema = schemaNodeToJSONSchema(result.schema);
+  const typeSource = schemaNodeToTypeScript(result.schema);
+}
+```
+
+## CLI
+
+Infer from JSON, JSON array, JSONL, or NDJSON files:
+
+```sh
+glass-cube --input ./responses.ndjson --format runtype
+glass-cube --input ./responses.ndjson --format jsonschema --out ./schema.json
+glass-cube --input ./responses.ndjson --format typescript
+```
+
+Compare schema drift between two datasets:
+
+```sh
+glass-cube \
+  --input ./responses-new.ndjson \
+  --compare ./responses-baseline.ndjson \
+  --format diff
+```
