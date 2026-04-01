@@ -45,6 +45,37 @@ describe("createAggregator", () => {
     const aggregator = createAggregator();
     expect(aggregator.finalize()).toBeNull();
   });
+
+  it("supports requiredFieldThreshold policy", () => {
+    const aggregator = createAggregator({ requiredFieldThreshold: 0.5 });
+
+    aggregator.addMany([
+      { foo: "bar", bar: 1 },
+      { foo: "baz", bar: 2 },
+      { foo: "qux" },
+    ]);
+
+    const result = aggregator.finalize()!;
+
+    expect(result.code).toEqual(
+      'R.Record({ "bar": R.Number, "foo": R.String })'
+    );
+  });
+
+  it("supports nullHandling policy", () => {
+    const preserve = createAggregator({ nullHandling: "preserve" });
+    preserve.addMany([{ foo: null }, { foo: "bar" }]);
+
+    const missing = createAggregator({ nullHandling: "missing" });
+    missing.addMany([{ foo: null }, { foo: "bar" }]);
+
+    expect(preserve.finalize()!.code).toEqual(
+      'R.Record({ "foo": R.Null.Or(R.String) })'
+    );
+    expect(missing.finalize()!.code).toEqual(
+      'R.Record({ "foo": R.String.Or(R.Undefined) })'
+    );
+  });
 });
 
 describe("schemaIR", () => {

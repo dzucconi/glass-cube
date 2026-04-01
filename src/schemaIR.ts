@@ -49,6 +49,10 @@ export type SchemaNode =
   | ObjectSchemaNode
   | UnionSchemaNode;
 
+export interface SchemaCodegenOptions {
+  requiredFieldThreshold?: number;
+}
+
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -266,7 +270,34 @@ const unionCode = (parts: string[]) => {
   }, "");
 };
 
-export const schemaNodeToCode = (node: SchemaNode): string => {
+const resolveRequiredFieldThreshold = (value: number | undefined) => {
+  if (value === undefined) {
+    return 1;
+  }
+
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  if (value < 0) {
+    return 0;
+  }
+
+  if (value > 1) {
+    return 1;
+  }
+
+  return value;
+};
+
+export const schemaNodeToCode = (
+  node: SchemaNode,
+  options: SchemaCodegenOptions = {}
+): string => {
+  const requiredFieldThreshold = resolveRequiredFieldThreshold(
+    options.requiredFieldThreshold
+  );
+
   switch (node.kind) {
     case "string":
       return "R.String";
@@ -281,17 +312,25 @@ export const schemaNodeToCode = (node: SchemaNode): string => {
     case "unknown":
       return "R.Unknown";
     case "array":
-      return `R.Array(${schemaNodeToCode(node.element)})`;
+      return `R.Array(${schemaNodeToCode(node.element, options)})`;
     case "union":
-      return unionCode(node.variants.map(schemaNodeToCode));
+      return unionCode(
+        node.variants.map((variant) => schemaNodeToCode(variant, options))
+      );
     case "object": {
       const fields = Object.keys(node.fields)
         .sort()
         .map((key) => {
           const field = node.fields[key];
-          const baseCode = schemaNodeToCode(field.node);
-          const code =
-            field.missing > 0 ? unionCode([baseCode, "R.Undefined"]) : baseCode;
+          const baseCode = schemaNodeToCode(field.node, options);
+          const seenRatio =
+            field.seen + field.missing === 0
+              ? 0
+              : field.seen / (field.seen + field.missing);
+          const isRequired = seenRatio >= requiredFieldThreshold;
+          const code = isRequired
+            ? baseCode
+            : unionCode([baseCode, "R.Undefined"]);
 
           return `${JSON.stringify(key)}: ${code}`;
         });
