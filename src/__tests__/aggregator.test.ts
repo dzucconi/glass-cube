@@ -4,6 +4,7 @@ import {
   schemaNodeToCode,
   schemaNodeToJSONSchema,
   schemaNodeToTypeScript,
+  schemaNodeToZod,
 } from "../schemaIR";
 
 describe("createAggregator", () => {
@@ -113,6 +114,14 @@ describe("schemaIR", () => {
     );
   });
 
+  it("emits Zod schemas", () => {
+    const schema = schemaFromValue({ foo: "bar", bar: [1, 2, 3] });
+
+    expect(schemaNodeToZod(schema)).toEqual(
+      'z.object({ "bar": z.array(z.number()), "foo": z.string() })'
+    );
+  });
+
   it("honors requiredFieldThreshold for JSON Schema and TypeScript emitters", () => {
     const aggregator = createAggregator({ requiredFieldThreshold: 0.5 });
     aggregator.addMany([
@@ -137,5 +146,9 @@ describe("schemaIR", () => {
     expect(
       schemaNodeToTypeScript(result.schema, { requiredFieldThreshold: 0.5 })
     ).toEqual('{ "bar": number; "foo": string; }');
+
+    expect(
+      schemaNodeToZod(result.schema, { requiredFieldThreshold: 0.5 })
+    ).toEqual('z.object({ "bar": z.number(), "foo": z.string() })');
   });
 });

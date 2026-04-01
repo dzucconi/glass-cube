@@ -46,7 +46,7 @@ describe("cli", () => {
     ]);
   });
 
-  it("infers runtype, jsonschema, and typescript output", () => {
+  it("infers runtype, jsonschema, typescript, and zod output", () => {
     const samples = [{ foo: "bar" }, { foo: "baz", bar: 1 }];
 
     expect(
@@ -86,6 +86,15 @@ describe("cli", () => {
         requiredFieldThreshold: 1,
       })
     ).toEqual('{ "bar"?: number; "foo": string; }\n');
+
+    expect(
+      inferFromSamples(samples, {
+        format: "zod",
+        requiredFieldThreshold: 1,
+      })
+    ).toEqual(
+      'z.object({ "bar": z.number().optional(), "foo": z.string() })\n'
+    );
   });
 
   it("rejects diff format for inferFromSamples helper", () => {

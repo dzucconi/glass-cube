@@ -5,9 +5,18 @@ import path from "path";
 import readline from "readline";
 import { createAggregator } from "./aggregator";
 import { diffSchemas } from "./schemaDiff";
-import { schemaNodeToJSONSchema, schemaNodeToTypeScript } from "./schemaIR";
+import {
+  schemaNodeToJSONSchema,
+  schemaNodeToTypeScript,
+  schemaNodeToZod,
+} from "./schemaIR";
 
-export type OutputFormat = "runtype" | "jsonschema" | "typescript" | "diff";
+export type OutputFormat =
+  | "runtype"
+  | "jsonschema"
+  | "typescript"
+  | "zod"
+  | "diff";
 
 export interface InferCLIOptions {
   inputPath: string;
@@ -26,7 +35,7 @@ Options:
   --input <path>                 Input file (.json, .jsonl, .ndjson)
   --out <path>                   Output path (defaults to stdout)
   --compare <path>               Baseline file for --format diff
-  --format <runtype|jsonschema|typescript|diff>
+  --format <runtype|jsonschema|typescript|zod|diff>
                                  Output format (default: runtype)
   --required-threshold <0..1>    Field requiredness threshold (default: 1)
   --null-handling <preserve|missing>
@@ -38,6 +47,7 @@ const parseFormat = (value?: string): OutputFormat => {
   if (!value || value === "runtype") return "runtype";
   if (value === "jsonschema") return "jsonschema";
   if (value === "typescript") return "typescript";
+  if (value === "zod") return "zod";
   if (value === "diff") return "diff";
   throw new Error(`Unsupported --format value: ${value}`);
 };
@@ -150,6 +160,12 @@ export const inferFromSamples = (
     return `${JSON.stringify(schemaNodeToJSONSchema(result.schema), null, 2)}\n`;
   }
 
+  if (options.format === "zod") {
+    return `${schemaNodeToZod(result.schema, {
+      requiredFieldThreshold: options.requiredFieldThreshold,
+    })}\n`;
+  }
+
   return `${schemaNodeToTypeScript(result.schema, {
     requiredFieldThreshold: options.requiredFieldThreshold,
   })}\n`;
@@ -237,6 +253,12 @@ export const inferFromFile = async (
 
   if (options.format === "jsonschema") {
     return `${JSON.stringify(schemaNodeToJSONSchema(result.schema), null, 2)}\n`;
+  }
+
+  if (options.format === "zod") {
+    return `${schemaNodeToZod(result.schema, {
+      requiredFieldThreshold: options.requiredFieldThreshold,
+    })}\n`;
   }
 
   return `${schemaNodeToTypeScript(result.schema, {

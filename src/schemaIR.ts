@@ -403,6 +403,20 @@ const unionType = (parts: string[]) => {
   return unique.join(" | ");
 };
 
+const zodUnion = (parts: string[]) => {
+  const unique = [...new Set(parts)];
+
+  if (unique.length === 0) {
+    return "z.unknown()";
+  }
+
+  if (unique.length === 1) {
+    return unique[0];
+  }
+
+  return `z.union([${unique.join(", ")}])`;
+};
+
 export const schemaNodeToTypeScript = (
   node: SchemaNode,
   options: SchemaCodegenOptions = {}
@@ -524,6 +538,50 @@ export const schemaNodeToJSONSchema = (
       }
 
       return schema;
+    }
+  }
+};
+
+export const schemaNodeToZod = (
+  node: SchemaNode,
+  options: SchemaCodegenOptions = {}
+): string => {
+  const requiredFieldThreshold = resolveRequiredFieldThreshold(
+    options.requiredFieldThreshold
+  );
+
+  switch (node.kind) {
+    case "string":
+      return "z.string()";
+    case "number":
+      return "z.number()";
+    case "boolean":
+      return "z.boolean()";
+    case "null":
+      return "z.null()";
+    case "undefined":
+      return "z.undefined()";
+    case "unknown":
+      return "z.unknown()";
+    case "array":
+      return `z.array(${schemaNodeToZod(node.element, options)})`;
+    case "union":
+      return zodUnion(
+        node.variants.map((variant) => schemaNodeToZod(variant, options))
+      );
+    case "object": {
+      const fields = Object.keys(node.fields)
+        .sort()
+        .map((key) => {
+          const field = node.fields[key];
+          const required = isRequiredField(field, requiredFieldThreshold);
+          const fieldNode = required ? field.node : stripUndefined(field.node);
+          const base = schemaNodeToZod(fieldNode, options);
+          const zodField = required ? base : `${base}.optional()`;
+          return `${JSON.stringify(key)}: ${zodField}`;
+        });
+
+      return `z.object({ ${fields.join(", ")} })`;
     }
   }
 };
