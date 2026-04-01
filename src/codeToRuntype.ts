@@ -1,6 +1,7 @@
 import * as R from "runtypes";
+import type { Element, RecordElement } from "./runtypeToCode";
 
-type RuntimeType = any;
+type RuntimeType = Element;
 
 class Parser {
   private cursor = 0;
@@ -240,7 +241,7 @@ class Parser {
     if (this.consume("R.Literal(")) {
       const literal = this.parseLiteralValue();
       this.expect(")");
-      return R.Literal(literal as any);
+      return R.Literal(literal);
     }
 
     if (this.consume("R.Array(")) {
@@ -278,13 +279,15 @@ class Parser {
 
       const right = this.parseExpression();
       this.expect(")");
-      left = left.Or(right);
+      left = (left as R.Runtype<unknown>).Or(
+        right as R.Runtype<unknown>
+      ) as RuntimeType;
     }
 
     return left;
   }
 
-  public parse(): RuntimeType {
+  public parseRecord(): RecordElement {
     const parsed = this.parseExpression();
     this.skipWhitespace();
 
@@ -295,11 +298,15 @@ class Parser {
       );
     }
 
+    if (parsed.tag !== "record") {
+      throw new Error("Top-level runtype must be a record");
+    }
+
     return parsed;
   }
 }
 
 export const codeToRuntype = (code: string) => {
   const parser = new Parser(code);
-  return parser.parse();
+  return parser.parseRecord();
 };

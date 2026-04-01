@@ -12,13 +12,16 @@ const isArray = (value: unknown): value is unknown[] => Array.isArray(value);
 
 const isEmptyArray = (value: unknown) => isArray(value) && value.length === 0;
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !isArray(value);
+
 const joinOrTypes = (types: string[]) =>
   types.reduce((acc, type) => {
     if (acc === "") return type;
     return `${acc}.Or(${type})`;
   }, "");
 
-export const jsonToCode = (value: any): string => {
+export const jsonToCode = (value: unknown): string => {
   if (isString(value)) {
     return "R.String";
   }
@@ -45,6 +48,10 @@ export const jsonToCode = (value: any): string => {
 
   if (isArray(value)) {
     return `R.Array(${joinOrTypes([...new Set(value.map(jsonToCode))])})`;
+  }
+
+  if (!isObject(value)) {
+    return "R.Unknown";
   }
 
   return `R.Record({ ${Object.entries(value)

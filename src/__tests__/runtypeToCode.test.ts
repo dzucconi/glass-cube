@@ -51,7 +51,7 @@ describe("runtypeToCode", () => {
       runtypeToCode(
         R.Record({
           'foo"bar': R.String,
-        } as any)
+        })
       )
     ).toEqual('R.Record({ "foo\\"bar": R.String })');
   });

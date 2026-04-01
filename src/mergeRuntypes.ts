@@ -119,8 +119,8 @@ const mergeElement = (
 };
 
 export const mergeElements = (
-  left: Record<string, any>,
-  right: Record<string, any>
+  left: Record<string, Element>,
+  right: Record<string, Element>
 ): Record<string, Element> => {
   return Object.keys(left).reduce((acc, key) => {
     acc[key] = mergeElement(left[key], right[key]);
