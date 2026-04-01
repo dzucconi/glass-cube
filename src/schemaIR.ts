@@ -53,6 +53,8 @@ export interface SchemaCodegenOptions {
   requiredFieldThreshold?: number;
 }
 
+export type JSONSchema = Record<string, unknown>;
+
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -290,6 +292,61 @@ const resolveRequiredFieldThreshold = (value: number | undefined) => {
   return value;
 };
 
+const fieldSeenRatio = (field: ObjectFieldNode) => {
+  if (field.seen + field.missing === 0) {
+    return 0;
+  }
+
+  return field.seen / (field.seen + field.missing);
+};
+
+const isRequiredField = (
+  field: ObjectFieldNode,
+  requiredFieldThreshold: number
+) => fieldSeenRatio(field) >= requiredFieldThreshold;
+
+const stripUndefined = (node: SchemaNode): SchemaNode => {
+  if (node.kind === "undefined") {
+    return { kind: "unknown", samples: 0 };
+  }
+
+  if (node.kind === "array") {
+    return {
+      ...node,
+      element: stripUndefined(node.element),
+    };
+  }
+
+  if (node.kind === "object") {
+    return {
+      ...node,
+      fields: Object.entries(node.fields).reduce((acc, [key, field]) => {
+        acc[key] = {
+          ...field,
+          node: stripUndefined(field.node),
+        };
+        return acc;
+      }, {} as Record<string, ObjectFieldNode>),
+    };
+  }
+
+  if (node.kind === "union") {
+    const variants = node.variants
+      .filter((variant) => variant.kind !== "undefined")
+      .map(stripUndefined);
+
+    if (variants.length === 0) {
+      return { kind: "unknown", samples: 0 };
+    }
+
+    return variants.length === 1
+      ? variants[0]
+      : { kind: "union", samples: node.samples, variants };
+  }
+
+  return node;
+};
+
 export const schemaNodeToCode = (
   node: SchemaNode,
   options: SchemaCodegenOptions = {}
@@ -323,11 +380,7 @@ export const schemaNodeToCode = (
         .map((key) => {
           const field = node.fields[key];
           const baseCode = schemaNodeToCode(field.node, options);
-          const seenRatio =
-            field.seen + field.missing === 0
-              ? 0
-              : field.seen / (field.seen + field.missing);
-          const isRequired = seenRatio >= requiredFieldThreshold;
+          const isRequired = isRequiredField(field, requiredFieldThreshold);
           const code = isRequired
             ? baseCode
             : unionCode([baseCode, "R.Undefined"]);
@@ -336,6 +389,141 @@ export const schemaNodeToCode = (
         });
 
       return `R.Record({ ${fields.join(", ")} })`;
+    }
+  }
+};
+
+const unionType = (parts: string[]) => {
+  const unique = [...new Set(parts)];
+
+  if (unique.length === 0) {
+    return "unknown";
+  }
+
+  return unique.join(" | ");
+};
+
+export const schemaNodeToTypeScript = (
+  node: SchemaNode,
+  options: SchemaCodegenOptions = {}
+): string => {
+  const requiredFieldThreshold = resolveRequiredFieldThreshold(
+    options.requiredFieldThreshold
+  );
+
+  switch (node.kind) {
+    case "string":
+      return "string";
+    case "number":
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "null":
+      return "null";
+    case "undefined":
+      return "undefined";
+    case "unknown":
+      return "unknown";
+    case "array":
+      return `Array<${schemaNodeToTypeScript(node.element, options)}>`;
+    case "union":
+      return unionType(
+        node.variants.map((variant) => schemaNodeToTypeScript(variant, options))
+      );
+    case "object": {
+      const fields = Object.keys(node.fields)
+        .sort()
+        .map((key) => {
+          const field = node.fields[key];
+          const required = isRequiredField(field, requiredFieldThreshold);
+          const fieldNode = required ? field.node : stripUndefined(field.node);
+          const type = schemaNodeToTypeScript(fieldNode, options);
+          return `${JSON.stringify(key)}${required ? "" : "?"}: ${type};`;
+        });
+
+      return `{ ${fields.join(" ")} }`;
+    }
+  }
+};
+
+const dedupeSchemas = (schemas: JSONSchema[]): JSONSchema[] => {
+  const map = new Map<string, JSONSchema>();
+  schemas.forEach((schema) => {
+    map.set(JSON.stringify(schema), schema);
+  });
+  return [...map.values()];
+};
+
+export const schemaNodeToJSONSchema = (
+  node: SchemaNode,
+  options: SchemaCodegenOptions = {}
+): JSONSchema => {
+  const requiredFieldThreshold = resolveRequiredFieldThreshold(
+    options.requiredFieldThreshold
+  );
+
+  const normalizedNode = stripUndefined(node);
+
+  switch (normalizedNode.kind) {
+    case "string":
+      return { type: "string" };
+    case "number":
+      return { type: "number" };
+    case "boolean":
+      return { type: "boolean" };
+    case "null":
+      return { type: "null" };
+    case "undefined":
+      return {};
+    case "unknown":
+      return {};
+    case "array":
+      return {
+        type: "array",
+        items: schemaNodeToJSONSchema(normalizedNode.element, options),
+      };
+    case "union": {
+      const anyOf = dedupeSchemas(
+        normalizedNode.variants.map((variant) =>
+          schemaNodeToJSONSchema(variant, options)
+        )
+      );
+
+      if (anyOf.length === 0) {
+        return {};
+      }
+
+      if (anyOf.length === 1) {
+        return anyOf[0];
+      }
+
+      return { anyOf };
+    }
+    case "object": {
+      const keys = Object.keys(normalizedNode.fields).sort();
+      const properties: Record<string, JSONSchema> = {};
+      const required: string[] = [];
+
+      keys.forEach((key) => {
+        const field = normalizedNode.fields[key];
+        properties[key] = schemaNodeToJSONSchema(field.node, options);
+
+        if (isRequiredField(field, requiredFieldThreshold)) {
+          required.push(key);
+        }
+      });
+
+      const schema: JSONSchema = {
+        type: "object",
+        properties,
+        additionalProperties: false,
+      };
+
+      if (required.length > 0) {
+        schema.required = required;
+      }
+
+      return schema;
     }
   }
 };

@@ -1,5 +1,10 @@
 import { createAggregator } from "../aggregator";
-import { schemaFromValue, schemaNodeToCode } from "../schemaIR";
+import {
+  schemaFromValue,
+  schemaNodeToCode,
+  schemaNodeToJSONSchema,
+  schemaNodeToTypeScript,
+} from "../schemaIR";
 
 describe("createAggregator", () => {
   it("aggregates samples into a stable schema and runtype", () => {
@@ -84,5 +89,53 @@ describe("schemaIR", () => {
     expect(schemaNodeToCode(schema)).toEqual(
       'R.Array(R.Record({ "baz": R.Number.Or(R.Undefined), "foo": R.String.Or(R.Undefined) }))'
     );
+  });
+
+  it("emits JSON Schema", () => {
+    const schema = schemaFromValue({ foo: "bar", bar: null });
+
+    expect(schemaNodeToJSONSchema(schema)).toEqual({
+      type: "object",
+      properties: {
+        bar: { type: "null" },
+        foo: { type: "string" },
+      },
+      required: ["bar", "foo"],
+      additionalProperties: false,
+    });
+  });
+
+  it("emits TypeScript types", () => {
+    const schema = schemaFromValue({ foo: "bar", bar: [1, 2, 3] });
+
+    expect(schemaNodeToTypeScript(schema)).toEqual(
+      '{ "bar": Array<number>; "foo": string; }'
+    );
+  });
+
+  it("honors requiredFieldThreshold for JSON Schema and TypeScript emitters", () => {
+    const aggregator = createAggregator({ requiredFieldThreshold: 0.5 });
+    aggregator.addMany([
+      { foo: "bar", bar: 1 },
+      { foo: "baz", bar: 2 },
+      { foo: "qux" },
+    ]);
+
+    const result = aggregator.finalize()!;
+
+    expect(schemaNodeToJSONSchema(result.schema, { requiredFieldThreshold: 0.5 }))
+      .toEqual({
+        type: "object",
+        properties: {
+          bar: { type: "number" },
+          foo: { type: "string" },
+        },
+        required: ["bar", "foo"],
+        additionalProperties: false,
+      });
+
+    expect(
+      schemaNodeToTypeScript(result.schema, { requiredFieldThreshold: 0.5 })
+    ).toEqual('{ "bar": number; "foo": string; }');
   });
 });
