@@ -1,8 +1,13 @@
 import {
+  diffFromFiles,
+  inferFromFile,
   inferFromSamples,
   parseCLIArgs,
   parseSamplesFromText,
 } from "../cli";
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
 
 describe("cli", () => {
   it("parses CLI args", () => {
@@ -89,5 +94,42 @@ describe("cli", () => {
         format: "diff",
       })
     ).toThrow("inferFromSamples does not support diff format");
+  });
+
+  it("infers from ndjson files", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "glass-cube-cli-"));
+    const filePath = path.join(dir, "responses.ndjson");
+
+    await fs.writeFile(filePath, '{"foo":"bar"}\n{"foo":"baz","bar":1}\n');
+
+    const output = await inferFromFile(filePath, {
+      format: "runtype",
+    });
+
+    expect(output).toEqual(
+      'R.Record({ "bar": R.Number.Or(R.Undefined), "foo": R.String })\n'
+    );
+  });
+
+  it("diffs schemas between two files", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "glass-cube-cli-diff-"));
+    const baselinePath = path.join(dir, "baseline.ndjson");
+    const currentPath = path.join(dir, "current.ndjson");
+
+    await fs.writeFile(baselinePath, '{"foo":"bar"}\n');
+    await fs.writeFile(currentPath, '{"foo":"bar","bar":1}\n');
+
+    const output = await diffFromFiles(currentPath, baselinePath, {});
+    const diff = JSON.parse(output);
+
+    expect(diff).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "$.bar",
+          kind: "field_added",
+          severity: "non_breaking",
+        }),
+      ])
+    );
   });
 });

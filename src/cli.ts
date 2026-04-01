@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-import fs from "fs/promises";
+import fs from "fs";
+import fsp from "fs/promises";
+import path from "path";
+import readline from "readline";
 import { createAggregator } from "./aggregator";
 import { diffSchemas } from "./schemaDiff";
 import { schemaNodeToJSONSchema, schemaNodeToTypeScript } from "./schemaIR";
@@ -14,6 +17,8 @@ export interface InferCLIOptions {
   requiredFieldThreshold?: number;
   nullHandling?: "preserve" | "missing";
 }
+
+const LINE_DELIMITED_EXTENSIONS = new Set([".ndjson", ".jsonl"]);
 
 const helpText = `Usage: glass-cube --input <path> [options]
 
@@ -150,6 +155,125 @@ export const inferFromSamples = (
   })}\n`;
 };
 
+const isLineDelimitedPath = (inputPath: string) =>
+  LINE_DELIMITED_EXTENSIONS.has(path.extname(inputPath).toLowerCase());
+
+export const addSamplesFromFile = async (
+  inputPath: string,
+  onSample: (sample: Record<string, unknown>) => void
+): Promise<number> => {
+  let count = 0;
+
+  if (!isLineDelimitedPath(inputPath)) {
+    const file = await fsp.readFile(inputPath, "utf8");
+    const samples = parseSamplesFromText(file);
+    samples.forEach((sample) => {
+      onSample(sample);
+      count += 1;
+    });
+    return count;
+  }
+
+  const input = fs.createReadStream(inputPath, { encoding: "utf8" });
+  const rl = readline.createInterface({ input, crlfDelay: Infinity });
+
+  let lineNumber = 0;
+
+  for await (const line of rl) {
+    lineNumber += 1;
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      continue;
+    }
+
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch (_error) {
+      throw new Error(
+        `Invalid JSON at ${inputPath}:${lineNumber} (expected NDJSON/JSONL line)`
+      );
+    }
+
+    if (!isObject(parsed)) {
+      continue;
+    }
+
+    onSample(parsed);
+    count += 1;
+  }
+
+  return count;
+};
+
+export const inferFromFile = async (
+  inputPath: string,
+  options: Omit<InferCLIOptions, "inputPath" | "outputPath">
+): Promise<string> => {
+  if (options.format === "diff") {
+    throw new Error("inferFromFile does not support diff format");
+  }
+
+  const aggregator = createAggregator({
+    requiredFieldThreshold: options.requiredFieldThreshold,
+    nullHandling: options.nullHandling,
+  });
+
+  await addSamplesFromFile(inputPath, (sample) => {
+    aggregator.add(sample);
+  });
+
+  const result = aggregator.finalize();
+
+  if (!result) {
+    return options.format === "jsonschema" ? "{}\n" : "R.Record({})\n";
+  }
+
+  if (options.format === "runtype") {
+    return `${result.code}\n`;
+  }
+
+  if (options.format === "jsonschema") {
+    return `${JSON.stringify(schemaNodeToJSONSchema(result.schema), null, 2)}\n`;
+  }
+
+  return `${schemaNodeToTypeScript(result.schema, {
+    requiredFieldThreshold: options.requiredFieldThreshold,
+  })}\n`;
+};
+
+export const diffFromFiles = async (
+  inputPath: string,
+  comparePath: string,
+  options: Pick<InferCLIOptions, "requiredFieldThreshold" | "nullHandling">
+): Promise<string> => {
+  const current = createAggregator({
+    requiredFieldThreshold: options.requiredFieldThreshold,
+    nullHandling: options.nullHandling,
+  });
+  await addSamplesFromFile(inputPath, (sample) => current.add(sample));
+
+  const baseline = createAggregator({
+    requiredFieldThreshold: options.requiredFieldThreshold,
+    nullHandling: options.nullHandling,
+  });
+  await addSamplesFromFile(comparePath, (sample) => baseline.add(sample));
+
+  const currentResult = current.finalize();
+  const baselineResult = baseline.finalize();
+
+  const diff =
+    currentResult && baselineResult
+      ? diffSchemas(baselineResult.schema, currentResult.schema, {
+          requiredFieldThreshold: options.requiredFieldThreshold,
+        })
+      : [];
+
+  return `${JSON.stringify(diff, null, 2)}\n`;
+};
+
 const main = async () => {
   if (process.argv.includes("--help")) {
     process.stdout.write(helpText);
@@ -157,43 +281,19 @@ const main = async () => {
   }
 
   const options = parseCLIArgs(process.argv.slice(2));
-  const file = await fs.readFile(options.inputPath, "utf8");
-  const samples = parseSamplesFromText(file);
 
   if (options.format === "diff") {
     if (!options.comparePath) {
       throw new Error("--compare <path> is required when --format diff");
     }
 
-    const compareFile = await fs.readFile(options.comparePath, "utf8");
-    const compareSamples = parseSamplesFromText(compareFile);
-
-    const current = createAggregator({
+    const diffOutput = await diffFromFiles(options.inputPath, options.comparePath, {
       requiredFieldThreshold: options.requiredFieldThreshold,
       nullHandling: options.nullHandling,
     });
-    current.addMany(samples);
-
-    const baseline = createAggregator({
-      requiredFieldThreshold: options.requiredFieldThreshold,
-      nullHandling: options.nullHandling,
-    });
-    baseline.addMany(compareSamples);
-
-    const currentResult = current.finalize();
-    const baselineResult = baseline.finalize();
-
-    const diff =
-      currentResult && baselineResult
-        ? diffSchemas(baselineResult.schema, currentResult.schema, {
-            requiredFieldThreshold: options.requiredFieldThreshold,
-          })
-        : [];
-
-    const diffOutput = `${JSON.stringify(diff, null, 2)}\n`;
 
     if (options.outputPath) {
-      await fs.writeFile(options.outputPath, diffOutput);
+      await fsp.writeFile(options.outputPath, diffOutput);
       return;
     }
 
@@ -201,14 +301,14 @@ const main = async () => {
     return;
   }
 
-  const output = inferFromSamples(samples, {
+  const output = await inferFromFile(options.inputPath, {
     format: options.format,
     requiredFieldThreshold: options.requiredFieldThreshold,
     nullHandling: options.nullHandling,
   });
 
   if (options.outputPath) {
-    await fs.writeFile(options.outputPath, output);
+    await fsp.writeFile(options.outputPath, output);
     return;
   }
 
