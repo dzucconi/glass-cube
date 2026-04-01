@@ -12,12 +12,16 @@ export type RecordElement = R.Record<{ [key: string]: Element }, false>;
 
 export type ArrayElement = R.Array<Element, false>;
 
+export type LiteralElement = R.Literal<
+  string | number | boolean | null | undefined
+>;
+
 export type Element =
   | R.String
   | R.Number
   | R.Boolean
   | R.Unknown
-  | R.Literal<null | undefined>
+  | LiteralElement
   | ArrayElement
   | UnionElement
   | RecordElement;
@@ -44,6 +48,14 @@ export const runtypeToCode = (value: Element): string => {
   }
 
   if (value.tag === "literal") {
+    if (
+      typeof value.value === "string" ||
+      typeof value.value === "number" ||
+      typeof value.value === "boolean"
+    ) {
+      return `R.Literal(${JSON.stringify(value.value)})`;
+    }
+
     return "R.Unknown"; // Unsupported
   }
 

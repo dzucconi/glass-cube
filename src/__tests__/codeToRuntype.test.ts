@@ -16,4 +16,15 @@ describe("codeToRuntype", () => {
   it("rejects arbitrary code execution attempts", () => {
     expect(() => codeToRuntype('(() => process.exit(1))()')).toThrow();
   });
+
+  it("parses literal expressions", () => {
+    const Example = codeToRuntype(
+      'R.Record({ "foo": R.Literal("bar").Or(R.Literal(2)).Or(R.Literal(true)) })'
+    );
+
+    expect(Example.validate({ foo: "bar" }).success).toBe(true);
+    expect(Example.validate({ foo: 2 }).success).toBe(true);
+    expect(Example.validate({ foo: true }).success).toBe(true);
+    expect(Example.validate({ foo: false }).success).toBe(false);
+  });
 });

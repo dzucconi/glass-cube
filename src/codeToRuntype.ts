@@ -2,8 +2,6 @@ import * as R from "runtypes";
 
 type RuntimeType = any;
 
-const isDigit = (char: string) => char >= "0" && char <= "9";
-
 class Parser {
   private cursor = 0;
 
@@ -108,6 +106,84 @@ class Parser {
     throw new Error(`Unterminated string at position ${this.cursor}`);
   }
 
+  private parseNumberLiteral() {
+    this.skipWhitespace();
+    const start = this.cursor;
+
+    if (this.peek() === "-") {
+      this.cursor += 1;
+    }
+
+    if (!/\d/.test(this.peek())) {
+      this.cursor = start;
+      throw new Error(
+        `Unexpected token at position ${this.cursor}, expected number literal`
+      );
+    }
+
+    while (!this.eof() && /\d/.test(this.peek())) {
+      this.cursor += 1;
+    }
+
+    if (this.peek() === ".") {
+      this.cursor += 1;
+      if (!/\d/.test(this.peek())) {
+        throw new Error(
+          `Unexpected token at position ${this.cursor}, expected decimal literal`
+        );
+      }
+
+      while (!this.eof() && /\d/.test(this.peek())) {
+        this.cursor += 1;
+      }
+    }
+
+    if (this.peek() === "e" || this.peek() === "E") {
+      this.cursor += 1;
+      if (this.peek() === "+" || this.peek() === "-") {
+        this.cursor += 1;
+      }
+
+      if (!/\d/.test(this.peek())) {
+        throw new Error(
+          `Unexpected token at position ${this.cursor}, expected exponent literal`
+        );
+      }
+
+      while (!this.eof() && /\d/.test(this.peek())) {
+        this.cursor += 1;
+      }
+    }
+
+    return Number(this.source.slice(start, this.cursor));
+  }
+
+  private parseLiteralValue(): string | number | boolean | null | undefined {
+    this.skipWhitespace();
+
+    if (this.peek() === '"' || this.peek() === "'") {
+      return this.parseStringLiteral();
+    }
+
+    if (this.consume("true")) {
+      return true;
+    }
+
+    if (this.consume("false")) {
+      return false;
+    }
+
+    if (this.consume("null")) {
+      return null;
+    }
+
+    if (this.consume("undefined")) {
+      return undefined;
+    }
+
+    return this.parseNumberLiteral();
+  }
+
   private parseRecordFields(): Record<string, RuntimeType> {
     const fields: Record<string, RuntimeType> = {};
 
@@ -159,6 +235,12 @@ class Parser {
 
     if (this.consume("R.Unknown")) {
       return R.Unknown;
+    }
+
+    if (this.consume("R.Literal(")) {
+      const literal = this.parseLiteralValue();
+      this.expect(")");
+      return R.Literal(literal as any);
     }
 
     if (this.consume("R.Array(")) {
