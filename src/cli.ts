@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import fs from "fs/promises";
 import { createAggregator } from "./aggregator";
+import { diffSchemas } from "./schemaDiff";
 import { schemaNodeToJSONSchema, schemaNodeToTypeScript } from "./schemaIR";
 
-export type OutputFormat = "runtype" | "jsonschema" | "typescript";
+export type OutputFormat = "runtype" | "jsonschema" | "typescript" | "diff";
 
 export interface InferCLIOptions {
   inputPath: string;
+  comparePath?: string;
   outputPath?: string;
   format: OutputFormat;
   requiredFieldThreshold?: number;
@@ -18,7 +20,8 @@ const helpText = `Usage: glass-cube --input <path> [options]
 Options:
   --input <path>                 Input file (.json, .jsonl, .ndjson)
   --out <path>                   Output path (defaults to stdout)
-  --format <runtype|jsonschema|typescript>
+  --compare <path>               Baseline file for --format diff
+  --format <runtype|jsonschema|typescript|diff>
                                  Output format (default: runtype)
   --required-threshold <0..1>    Field requiredness threshold (default: 1)
   --null-handling <preserve|missing>
@@ -30,6 +33,7 @@ const parseFormat = (value?: string): OutputFormat => {
   if (!value || value === "runtype") return "runtype";
   if (value === "jsonschema") return "jsonschema";
   if (value === "typescript") return "typescript";
+  if (value === "diff") return "diff";
   throw new Error(`Unsupported --format value: ${value}`);
 };
 
@@ -68,6 +72,7 @@ export const parseCLIArgs = (argv: string[]): InferCLIOptions => {
 
   return {
     inputPath,
+    comparePath: get("--compare"),
     outputPath: get("--out"),
     format: parseFormat(get("--format")),
     requiredFieldThreshold: parseRequiredThreshold(get("--required-threshold")),
@@ -116,6 +121,10 @@ export const inferFromSamples = (
   samples: Record<string, unknown>[],
   options: Omit<InferCLIOptions, "inputPath" | "outputPath">
 ): string => {
+  if (options.format === "diff") {
+    throw new Error("inferFromSamples does not support diff format");
+  }
+
   const aggregator = createAggregator({
     requiredFieldThreshold: options.requiredFieldThreshold,
     nullHandling: options.nullHandling,
@@ -150,6 +159,48 @@ const main = async () => {
   const options = parseCLIArgs(process.argv.slice(2));
   const file = await fs.readFile(options.inputPath, "utf8");
   const samples = parseSamplesFromText(file);
+
+  if (options.format === "diff") {
+    if (!options.comparePath) {
+      throw new Error("--compare <path> is required when --format diff");
+    }
+
+    const compareFile = await fs.readFile(options.comparePath, "utf8");
+    const compareSamples = parseSamplesFromText(compareFile);
+
+    const current = createAggregator({
+      requiredFieldThreshold: options.requiredFieldThreshold,
+      nullHandling: options.nullHandling,
+    });
+    current.addMany(samples);
+
+    const baseline = createAggregator({
+      requiredFieldThreshold: options.requiredFieldThreshold,
+      nullHandling: options.nullHandling,
+    });
+    baseline.addMany(compareSamples);
+
+    const currentResult = current.finalize();
+    const baselineResult = baseline.finalize();
+
+    const diff =
+      currentResult && baselineResult
+        ? diffSchemas(baselineResult.schema, currentResult.schema, {
+            requiredFieldThreshold: options.requiredFieldThreshold,
+          })
+        : [];
+
+    const diffOutput = `${JSON.stringify(diff, null, 2)}\n`;
+
+    if (options.outputPath) {
+      await fs.writeFile(options.outputPath, diffOutput);
+      return;
+    }
+
+    process.stdout.write(diffOutput);
+    return;
+  }
+
   const output = inferFromSamples(samples, {
     format: options.format,
     requiredFieldThreshold: options.requiredFieldThreshold,

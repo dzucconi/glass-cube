@@ -19,6 +19,7 @@ describe("cli", () => {
       ])
     ).toEqual({
       inputPath: "responses.jsonl",
+      comparePath: undefined,
       format: "jsonschema",
       requiredFieldThreshold: 0.8,
       nullHandling: "missing",
@@ -80,5 +81,13 @@ describe("cli", () => {
         requiredFieldThreshold: 1,
       })
     ).toEqual('{ "bar"?: number; "foo": string; }\n');
+  });
+
+  it("rejects diff format for inferFromSamples helper", () => {
+    expect(() =>
+      inferFromSamples([{ foo: "bar" }], {
+        format: "diff",
+      })
+    ).toThrow("inferFromSamples does not support diff format");
   });
 });

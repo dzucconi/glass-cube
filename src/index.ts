@@ -5,5 +5,6 @@ export * from "./jsonToRuntype";
 export * from "./mergeRuntypes";
 export * from "./reduceRuntypes";
 export * from "./runtypeToCode";
+export * from "./schemaDiff";
 export * from "./schemaIR";
 export * from "./writeRuntype";
