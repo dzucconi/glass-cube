@@ -28,8 +28,6 @@
     "typescript": "3.9.9"
   },
   "dependencies": {
-    "@types/lodash": "^4.14.159",
-    "lodash": "^4.17.19",
     "prettier": "^2.2.1",
     "runtypes": "^5.0.1"
   },

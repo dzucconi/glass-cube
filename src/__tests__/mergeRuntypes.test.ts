@@ -85,6 +85,17 @@ describe("mergeRuntypes", () => {
     ).toEqual('R.Record({ "foo": R.Null.Or(R.Array(R.String)) })');
   });
 
+  it("merges arrays of primitive types", () => {
+    const Example = mergeRuntypes(
+      jsonToRuntype({ foo: [1] }),
+      jsonToRuntype({ foo: ["a"] })
+    );
+
+    expect(Example.validate({ foo: [1] }).success).toBe(true);
+    expect(Example.validate({ foo: ["a"] }).success).toBe(true);
+    expect(Example.validate({ foo: [true] }).success).toBe(false);
+  });
+
   it("handles arrays of records", () => {
     const Example = reduceRuntypes([
       jsonToRuntype({ foo: [] }),
@@ -107,6 +118,22 @@ describe("mergeRuntypes", () => {
     expect(
       runtypeToCode(mergeRuntypes(nullableUnknownRuntype, knownRuntype))
     ).toEqual('R.Record({ "foo": R.Array(R.String).Or(R.Null) })');
+  });
+
+  it("preserves null and undefined when merging pre-unioned fields", () => {
+    const left = mergeRuntypes(
+      jsonToRuntype({ foo: "x" }),
+      jsonToRuntype({ foo: null })
+    );
+
+    const right = mergeRuntypes(jsonToRuntype({ foo: 1 }), jsonToRuntype({}));
+
+    const merged = mergeRuntypes(left, right);
+
+    expect(merged.validate({ foo: "x" }).success).toBe(true);
+    expect(merged.validate({ foo: 1 }).success).toBe(true);
+    expect(merged.validate({ foo: null }).success).toBe(true);
+    expect(merged.validate({}).success).toBe(true);
   });
 
   describe("reduceRuntypes", () => {

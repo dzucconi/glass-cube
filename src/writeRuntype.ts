@@ -23,7 +23,7 @@ export const writeRuntype = ({
       }`,
       `export type ${name} = R.Static<typeof ${name}>`,
     ].join("\n\n"),
-    { parser: "babel" }
+    { parser: "babel" },
   );
 
   fs.writeFile(filePath, fileSource, (err) => {
