@@ -1,5 +1,6 @@
-import fs from "fs";
-import { format } from "prettier/standalone";
+import fs from "fs/promises";
+import path from "path";
+import { format } from "prettier";
 import { jsonToCode } from "./jsonToCode";
 import { runtypeToCode } from "./runtypeToCode";
 
@@ -8,13 +9,13 @@ export const HEADER = `import * as R from "runtypes";`;
 export const writeRuntype = ({
   object,
   name,
-  path = "./__generated__",
+  path: outputPath = "./__generated__",
 }: {
   object: any;
   name: string;
-  path: string;
+  path?: string;
 }) => {
-  const filePath = `${path}/${name}.ts`;
+  const filePath = path.join(outputPath, `${name}.ts`);
   const fileSource = format(
     [
       HEADER,
@@ -26,8 +27,10 @@ export const writeRuntype = ({
     { parser: "babel" },
   );
 
-  fs.writeFile(filePath, fileSource, (err) => {
-    console.log(`Wrote: ${filePath}`);
-    if (err) console.error(err);
+  return fs.mkdir(outputPath, { recursive: true }).then(() => {
+    return fs.writeFile(filePath, fileSource).then(() => {
+      console.log(`Wrote: ${filePath}`);
+      return filePath;
+    });
   });
 };
