@@ -4,6 +4,9 @@
   "description": "Runtype generation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "glass-cube": "dist/cli.js"
+  },
   "repository": "https://github.com/dzucconi/glass-cube",
   "author": "dzucconi",
   "license": "MIT",

@@ -1,4 +1,5 @@
 export * from "./aggregator";
+export * from "./cli";
 export * from "./jsonToCode";
 export * from "./jsonToRuntype";
 export * from "./mergeRuntypes";
